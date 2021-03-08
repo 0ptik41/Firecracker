@@ -10,3 +10,26 @@ Brandnew project so there's a lot more to do. I want to add a GUI component beca
 Linux Debugger that I know if. Reverse engineering frameworks like Ghidra might have support for something like that, but
 I dont know how to do more than static analysis with it (that's also a *massive* project...). 
 
+=====================================================================================================
+
+Below is a simple hello world .asm code, this is something we can actually step through reasonably.
+
+section     .text
+global      _start 
+_start: 
+    mov     edx,len   
+    mov     ecx,msg   
+    mov     ebx,1   
+    mov     eax,4   
+    int     0x80   
+    mov     eax,1  
+    int     0x80   
+section     .data
+msg     db  'Hello world',0xa  
+len     equ $ - msg   
+
+saved as hello.asm it can be compiled as follows.
+nasm -f elf64 hello.asm # assemble the program  
+ld -s -o hello hello.o # link the object file nasm produced into an executable file  
+./hello # hello is an executable file
+

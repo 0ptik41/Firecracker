@@ -9,5 +9,5 @@ _start:
     mov     eax,1  
     int     0x80   
 section     .data
-msg     db  'AAAAAAAAAAAAAAAAAAAA',0xa  
+msg     db  'Hello, friend.',0xa  
 len     equ $ - msg

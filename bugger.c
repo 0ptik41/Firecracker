@@ -119,10 +119,10 @@ int debugger(int nargin, const char * program, const char *args[]){
 	    		
 				ptrace(PTRACE_GETREGS, pid, 0, &regs);
 				for (int z=0; z < breakpointsAdded; z++)
-					if (check_breakpoint(pid, breakpointsAdded, breakpoints[z], breakpoints)){
+					if (check_breakpoint(pid, regs.rip, breakpoints[z], breakpoints)){
 						printf("[x] Hit Breakpoint %s\n", breakpoints[z]);
 						if (!stopped){
-							temp_regs.rax = temp_regs.rax && 0xcc000000;
+							temp_regs.rax = temp_regs.rsp && 0xcc000000;
 							ptrace(PTRACE_SETREGS, pid, 0, &temp_regs);
 							stopped = true;
 						}
@@ -154,6 +154,8 @@ int debugger(int nargin, const char * program, const char *args[]){
 	        	wait(&wait_status);	
 			}
 			if (strcmp(options, "show")==0){
+				if (stopped)
+					ptrace(PTRACE_SETREGS, pid, 0, &regs);
 				show_registers(pid);
 			}
 			if (strcmp(options, "quit")==0 || strcmp(options, "q")==0){

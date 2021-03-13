@@ -1,4 +1,4 @@
-from threading import Thread
+import multiprocessing
 from Tkinter import *
 from ctypes import *
 import subprocess
@@ -6,7 +6,7 @@ import time
 import sys 
 import os 
 
-lib = cdll.LoadLibrary("./firecracker.so")
+lib = cdll.LoadLibrary("./dlib.so")
 
 class Register:
 
@@ -23,17 +23,18 @@ class Register:
 						background=self.color).grid(row=self.x, column=self.y, padx=10, pady=2)
 
 class RegStruct(Structure):
-	_fields_ = [("rip", c_char_p), 
-			    ("rax", c_char_p),
-			    ("rcx", c_char_p),
-			    ("rdx", c_char_p),
-			    ("rbp", c_char_p),
-			    ("cs", c_char_p),
-			    ("ss", c_char_p),
-			    ("r08", c_char_p),
-			    ("r09", c_char_p),
-			    ("r10", c_char_p),
-			    ("r11", c_char_p)]
+	_fields_ = [("rip", c_ulong), 
+				("rax", c_ulong),
+				("rcx", c_ulong),
+				("rdx", c_ulong),
+				("rbp", c_ulong),
+				("rsp", c_ulong),
+				("cs", c_ulong),
+				("ss", c_ulong),
+				("r08", c_ulong),
+				("r09", c_ulong),
+				("r10", c_ulong),
+				("r11", c_ulong)]
 
 
 
@@ -43,22 +44,19 @@ def launch_program(p):
 	return p.pid
 
 def debugger(t):
-   newpid = os.fork()
-   while True: # BE CAREFUL
-      if newpid == 0:
-         dbg_pid = launch_program(t)
-         regs = RegStruct()
-         tmp = RegStruct()
-         print('Getting Child Registers')
-         tmp = lib.give_registers(dbg_pid, byref(regs))
-      	 # Examine registers values given back! 
-      	 print(tmp.rip)
-      	 opt = raw_input('What next?: ')
-      else:
-         pids = (os.getpid(), newpid)
-         print("parent: %d, child: %d\n" % pids)
-         time.sleep(10)
-
+	newpid = os.fork()
+	while True:
+		if newpid == 0:
+			dbg_pid = launch_program(t)
+			lib.show_registers(dbg_pid)
+			regs = RegStruct()
+			lib.get_rax.argtypes = [c_int]
+			lib.get_rax.restypes = c_ulong
+			print('%08x' % c_ulong(lib.get_rax(dbg_pid)& 0xFFFFFFFF).value)
+			time.sleep(3)
+		else:
+			pids = (os.getpid, newpid)
+			time.sleep(3)
 
 
 def main():
@@ -94,6 +92,7 @@ def main():
 	debugger(target) # This needs to be a daemon probably
 
 	root.mainloop() # run it
+
 
 if __name__ == '__main__':
 	main()

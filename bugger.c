@@ -15,6 +15,20 @@
 #include <wchar.h>
 
 
+struct PyReg {
+	const char* rip;
+	const char* rax;
+	const char* rdx;
+	const char* rcx;
+	const char* rbp;
+	const char* cs;
+	const char* ss;
+	const char* r08;
+	const char* r09;
+	const char* r10;
+	const char* r11;
+};
+
 
 void e(const char *p){
     if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0){
@@ -56,6 +70,15 @@ void show_registers(int pid){
 	printf("CS:\t0x%08llx\n", regs.cs);
 	// printf("The child made a system call %lldn", regs.orig_rax);
 }
+
+struct PyReg give_registers(int pid){
+	struct user_regs_struct regs;
+	struct PyReg preg;
+	ptrace(PTRACE_GETREGS, pid, 0, &regs);
+	preg.rip = (const char*)&regs.rip;
+	return preg;
+}
+
 
 int request_breakpoint(int nbp, char *breakpoints[]){
 	char address[1028];
@@ -141,6 +164,12 @@ int debugger(int nargin, const char * program, const char *args[]){
 	        	if (stopped){
 					ptrace(PTRACE_SETREGS, pid, 0, &regs);
 				}
+			}
+
+			if (strcmp(options, "break") == 0){
+				ptrace(PTRACE_GETREGS, pid, 0, &temp_regs);
+				temp_regs.rsp = temp_regs.rsp & 0xcc000000;
+				ptrace(PTRACE_SETREGS, pid, 0, &temp_regs);
 			}
 
 			if (strcmp(options, "step") == 0){

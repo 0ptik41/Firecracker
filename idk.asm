@@ -3,18 +3,17 @@ global		start
 
 
 _start:
-        ; Say Hello!
+    ; Say Hello!
 	mov 	edx, len
-	mov	ecx, msg
+	mov		ecx, msg
 	mov 	ebx, 1
 	mov 	eax, 4
-	int	0x80
-	; Now Loop For Debugging the Debugger
-	add	rdi, 0x1
-	loop	_start
+	int		0x80
+	add		rdi, 0x1 	; count how many times through the loop 
+	loop 	_start  	; Now Loop For Debugging the Debugger
 
 _start.start:
-	mov	edx, len
+	mov		edx, len
 	mov 	ecx, msg
 	mov 	ebx, 1
 	mov 	eax, 4

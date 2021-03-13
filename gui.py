@@ -22,6 +22,20 @@ class Register:
 						text=str(self.name+': '+self.value),
 						background=self.color).grid(row=self.x, column=self.y, padx=10, pady=2)
 
+class RegStruct(Structure):
+	_fields_ = [("rip", c_char_p), 
+			    ("rax", c_char_p),
+			    ("rcx", c_char_p),
+			    ("rdx", c_char_p),
+			    ("rbp", c_char_p),
+			    ("cs", c_char_p),
+			    ("ss", c_char_p),
+			    ("r08", c_char_p),
+			    ("r09", c_char_p),
+			    ("r10", c_char_p),
+			    ("r11", c_char_p)]
+
+
 
 def launch_program(p):
 	cmd = [p]
@@ -29,21 +43,28 @@ def launch_program(p):
 	return p.pid
 
 def debugger(t):
-   while True:
-      newpid = os.fork()
+   newpid = os.fork()
+   while True: # BE CAREFUL
       if newpid == 0:
          dbg_pid = launch_program(t)
-         lib.show_registers(dbg_pid)
+         regs = RegStruct()
+         tmp = RegStruct()
+         print('Getting Child Registers')
+         tmp = lib.give_registers(dbg_pid, byref(regs))
+      	 # Examine registers values given back! 
+      	 print(tmp.rip)
+      	 opt = raw_input('What next?: ')
       else:
          pids = (os.getpid(), newpid)
          print("parent: %d, child: %d\n" % pids)
-         time.sleep(1)
+         time.sleep(10)
+
 
 
 def main():
 	# Load The C Library for Stepping through ELF binaries
 	if not os.path.isfile('firecracker.so'):
-		os.system('gcc -shared -fPIC -o firecracker.so steplib.c')
+		os.system('gcc -shared -fPIC -o firecracker.so bugger.c')
 	
 	
 	# Load in program to debug

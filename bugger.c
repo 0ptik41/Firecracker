@@ -9,6 +9,7 @@
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <inttypes.h>
 #define _OPEN_SYS_ITOA_EXT
 
 void e(const char *p){
@@ -106,35 +107,18 @@ int debugger(int nargin, const char * program, const char *args[]){
 		bool stopped = false;
 		struct user_regs_struct temp_regs;
 		struct user_regs_struct regs;
+		ptrace(PTRACE_GETREGS, pid, 0, &regs);
 		char *breakpoints[100];
 		int breakpointsAdded = 0;
+		int hits = 0;
 	    while (WIFSTOPPED(wait_status)) {
 	    	// Let user choose what to do next
 	    	char options[256];  
 	        printf("[>]");
 	    	scanf("%s", options);
 
-	    	// check rip if it matches a breakpoint 
-	    	if (breakpointsAdded > 0){
-	    		
-				ptrace(PTRACE_GETREGS, pid, 0, &regs);
-				for (int z=0; z < breakpointsAdded; z++)
-					if (check_breakpoint(pid, regs.rip, breakpoints[z], breakpoints)){
-						printf("[x] Hit Breakpoint %s\n", breakpoints[z]);
-						if (!stopped){
-							temp_regs.rax = temp_regs.rsp && 0xcc000000;
-							ptrace(PTRACE_SETREGS, pid, 0, &temp_regs);
-							stopped = true;
-						}
-						
-					}
-	    	}
-
 	        if (strcmp(options, "cont")==0 || strcmp(options, "c")==0){	
-				/* Make the child execute another instruction */
-				
 				if (ptrace(PTRACE_CONT, pid, NULL, NULL) < 0) {
-		        // if (ptrace(PTRACE_SINGLESTEP, pid, 0, 0) < 0) {
 		            perror("ptrace");
 		            return -1;
 		        }
@@ -161,11 +145,6 @@ int debugger(int nargin, const char * program, const char *args[]){
 			if (strcmp(options, "quit")==0 || strcmp(options, "q")==0){
 				ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);
 				break;
-			}
-			if (strcmp(options, "break")==0){
-				breakpointsAdded = request_breakpoint(breakpointsAdded, breakpoints);
-				printf("[o] Added Break point %s [%d total]\n",
-				 						breakpoints[breakpointsAdded-1], breakpointsAdded);
 			}
 			steps++;
 

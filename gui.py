@@ -1,9 +1,12 @@
 from threading import Thread
 from Tkinter import *
 from ctypes import *
+import subprocess
+import time
 import sys 
 import os 
 
+lib = cdll.LoadLibrary("./firecracker.so")
 
 class Register:
 
@@ -20,18 +23,35 @@ class Register:
 						background=self.color).grid(row=self.x, column=self.y, padx=10, pady=2)
 
 
+def launch_program(p):
+	cmd = [p]
+	p = subprocess.Popen(cmd)
+	return p.pid
+
+def debugger(t):
+   while True:
+      newpid = os.fork()
+      if newpid == 0:
+         dbg_pid = launch_program(t)
+         lib.show_registers(dbg_pid)
+      else:
+         pids = (os.getpid(), newpid)
+         print("parent: %d, child: %d\n" % pids)
+         time.sleep(1)
+
 
 def main():
 	# Load The C Library for Stepping through ELF binaries
 	if not os.path.isfile('firecracker.so'):
 		os.system('gcc -shared -fPIC -o firecracker.so steplib.c')
-	lib = cdll.LoadLibrary("./firecracker.so")
-	if len(sys.argv) >= 2:
-		pid = int(sys.argv[1])
-		lib.show_registers(pid)
+	
+	
+	# Load in program to debug
+	if len(sys.argv) >=2:
+		target = sys.argv[1]
 
+	# Create GUI 
 	root = Tk()
-
 	root.wm_title("~ Firecracker ~") 
 	root.config(background = "#b1b1b1b1b1b1")
 
@@ -48,8 +68,9 @@ def main():
 	r11 = Register(root, 'R11', '0x00000000', [3, 1])
 	rsp = Register(root, 'RSP', '0x00000000', [4, 1])
 	ss  = Register(root,  'SS', ' 0x00000000', [5, 1])
-
-
+	
+	# Execute the debugger  program
+	debugger(target) # This needs to be a daemon probably
 
 	root.mainloop() # run it
 

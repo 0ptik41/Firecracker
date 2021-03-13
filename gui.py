@@ -1,3 +1,4 @@
+from threading import Thread
 from Tkinter import *
 from ctypes import *
 import sys 
@@ -25,7 +26,9 @@ def main():
 	if not os.path.isfile('firecracker.so'):
 		os.system('gcc -shared -fPIC -o firecracker.so steplib.c')
 	lib = cdll.LoadLibrary("./firecracker.so")
-
+	if len(sys.argv) >= 2:
+		pid = int(sys.argv[1])
+		lib.show_registers(pid)
 
 	root = Tk()
 

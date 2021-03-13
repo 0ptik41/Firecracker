@@ -29,11 +29,13 @@ ld -s -o hello hello.o # link the object file nasm produced into an executable f
 ./hello # hello is an executable file
 
 ==============================================================================
-
+## Quick Testing
 Running the "hello" assembly file using the compiled code, I can compare the values with what is seen running the same executable in GDB to be sure everything is working. 
 ![ex](https://raw.githubusercontent.com/0ptik41/Firecracker/main/ex.png)
 
 =============================================================================
+## Setting Breakpoints 
+I kind of got break points working now so that the only option isnt **just** single stepping. Using `break` and an address a break point can be set. 
 
 
 =============================================================================

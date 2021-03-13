@@ -11,6 +11,10 @@
 #include <sys/wait.h>
 #include <inttypes.h>
 #define _OPEN_SYS_ITOA_EXT
+#include <assert.h>
+#include <wchar.h>
+
+
 
 void e(const char *p){
     if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0){
@@ -70,6 +74,16 @@ bool check_breakpoint(int pid, int n, char *point, char *breakpoints[]){
 	}
 	return isBreakpoint;
 }
+
+int start_debugee(const char* program){
+	printf("[-] Launching %s\n", program);
+	if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0){
+        printf("[!] Ptrace Error\n");
+    }
+    char * const NUL = " &";
+	return execv(program, &NUL);
+}
+
 
 int debugger(int nargin, const char * program, const char *args[]){
 	// Setup Debugger Variables

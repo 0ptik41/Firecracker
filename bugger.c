@@ -153,7 +153,7 @@ int debugger(int nargin, const char * program, const char *args[]){
 	    	char options[256];  
 	        printf("[>]");
 	    	scanf("%s", options);
-
+	    	// Check if user wants to continue
 	        if (strcmp(options, "cont")==0 || strcmp(options, "c")==0){	
 				if (ptrace(PTRACE_CONT, pid, NULL, NULL) < 0) {
 		            perror("ptrace");
@@ -165,13 +165,13 @@ int debugger(int nargin, const char * program, const char *args[]){
 					ptrace(PTRACE_SETREGS, pid, 0, &regs);
 				}
 			}
-
+			// check if user wants to add a breakpoint
 			if (strcmp(options, "break") == 0){
 				ptrace(PTRACE_GETREGS, pid, 0, &temp_regs);
 				temp_regs.rsp = temp_regs.rsp & 0xcc000000;
 				ptrace(PTRACE_SETREGS, pid, 0, &temp_regs);
 			}
-
+			// check if user wants to single step
 			if (strcmp(options, "step") == 0){
 				if (ptrace(PTRACE_SINGLESTEP, pid, 0, 0) < 0) {
 		            perror("ptrace");
@@ -180,18 +180,18 @@ int debugger(int nargin, const char * program, const char *args[]){
 		        /* Wait for child to stop on its next instruction */
 	        	wait(&wait_status);	
 			}
+			// check if user wants to view registers
 			if (strcmp(options, "show")==0){
 				if (stopped)
 					ptrace(PTRACE_SETREGS, pid, 0, &regs);
 				show_registers(pid);
 			}
+			// check if user wants to quit the program
 			if (strcmp(options, "quit")==0 || strcmp(options, "q")==0){
 				ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);
 				break;
 			}
-			steps++;
-
-	        
+			steps++;	        
 		}
 	}
 

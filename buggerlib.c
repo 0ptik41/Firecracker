@@ -63,20 +63,67 @@ void set_registers(int pid, struct user_regs_struct new_regs){
 	ptrace(PTRACE_SETREGS, pid, 0, &new_regs);
 }
 
-struct PyReg give_registers(int pid){
-	struct PyReg regvals;
-	struct user_regs_struct tmpregs;
+unsigned long get_rax(int pid){
 	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
 	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
-	// Copy these values into the struct for python
-	regvals.rip = tmpregs.rip;	regvals.rax = tmpregs.rax;
-	regvals.rdx = tmpregs.rdx;	regvals.rcx = tmpregs.rcx;
-	regvals.rbp = tmpregs.rbp;	regvals.r09 = tmpregs.r9;
-	regvals.r10 = tmpregs.r10;	regvals.r11 = tmpregs.r11;	
-	regvals.rdi = tmpregs.rdi;
-	regvals.cs = tmpregs.cs;
-	regvals.ss = tmpregs.ss;
-	return regvals;
+	return tmpregs.rax;
+}
+
+unsigned long get_rip(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rip;	
+}
+
+unsigned long get_rcx(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rcx;
+}
+
+unsigned long get_rdx(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rdx;
+}
+
+unsigned long get_rbx(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rbx;
+}
+
+unsigned long get_rsi(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rsi;
+}
+
+unsigned long get_rbp(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rbp;
+}
+
+unsigned long get_rdi(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rdi;
+}
+
+unsigned long get_rsp(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rsp;
 }
 
 /* Compile with: gcc -shared -fPIC -o dlib.so buggerlib.c */

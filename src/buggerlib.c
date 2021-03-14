@@ -126,4 +126,36 @@ unsigned long get_rsp(int pid){
 	return tmpregs.rsp;
 }
 
+bool continue_pid(int pid){
+	bool completed = true;
+	if (ptrace(PTRACE_CONT, pid, NULL, NULL) < 0){
+		perror("ptrace")
+		completed = false;
+	}
+	return completed;
+}
+
+void kill_pid(int pid){
+	ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);
+}
+
+bool step(int pid){
+	bool stepped = true;
+	if (ptrace(PTRACE_SINGLESTEP, pid, 0, 0) < 0){
+		perror("ptrace");
+		stepped = false;
+	}
+	return stepped;
+}
+
+void parent_wait(int wait_status){
+	wait(&wait_status);
+	return;
+}
+
+
+
+
+
+
 /* Compile with: gcc -shared -fPIC -o dlib.so buggerlib.c */

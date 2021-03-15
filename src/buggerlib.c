@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/reg.h> 
@@ -129,7 +130,7 @@ unsigned long get_rsp(int pid){
 bool continue_pid(int pid){
 	bool completed = true;
 	if (ptrace(PTRACE_CONT, pid, NULL, NULL) < 0){
-		perror("ptrace")
+		perror("ptrace");
 		completed = false;
 	}
 	return completed;
@@ -138,6 +139,7 @@ bool continue_pid(int pid){
 void kill_pid(int pid){
 	ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);
 }
+
 
 bool step(int pid){
 	bool stepped = true;
@@ -154,6 +156,39 @@ void parent_wait(int wait_status){
 }
 
 
+void pause_pid(int pid){
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	tmpregs.rsp = tmpregs.rsp & 0xcc0000000000;
+	ptrace(PTRACE_SETREGS, pid, 0, &tmpregs);
+   
+}
+
+void set_eperm_syscall(int pid){
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	tmpregs.rax = -EPERM; // Operation not permitted
+    ptrace(PTRACE_SETREGS, pid, 0, &tmpregs);
+}
+
+void exec_next_syscall(int pid){
+	/* Run system call and stop on exit */
+    ptrace(PTRACE_SYSCALL, pid, 0, 0);
+    waitpid(pid, 0, 0);
+}
+
+void set_invalid_syscall(int pid){
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	tmpregs.orig_rax = -1; // set to invalid syscall
+ 	ptrace(PTRACE_SETREGS, pid, 0, &tmpregs);
+}
+
+void traceme(){
+	if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0){
+        perror("[!] Ptrace Error\n");
+    }
+}
 
 
 

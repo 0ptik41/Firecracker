@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <stdbool.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,46 +11,24 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <inttypes.h>
-#define _OPEN_SYS_ITOA_EXT
 #include <assert.h>
 #include <wchar.h>
-
+#define _OPEN_SYS_ITOA_EXT
 
 struct PyReg {
-	const char* rip;
-	const char* rax;
-	const char* rdx;
-	const char* rcx;
-	const char* rbp;
-	const char* cs;
-	const char* ss;
-	const char* r08;
-	const char* r09;
-	const char* r10;
-	const char* r11;
+	unsigned long rip;
+	unsigned long rax;
+	unsigned long rdx;
+	unsigned long rcx;
+	unsigned long rbp;
+	unsigned long rdi;
+	unsigned long rsp;
+	unsigned long cs;
+	unsigned long ss;
+	unsigned long r09;
+	unsigned long r10;
+	unsigned long r11;
 };
-
-
-void e(const char *p){
-    if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0){
-        printf("[!] Ptrace Error\n");
-    }
-	execl(p, "", NULL); 
-}
-
-void e1(const char *p, const char *a){
-    if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0){
-        printf("[!] Ptrace Error\n");
-    }
-	execl(p, a, NULL); 
-}
-
-void e2(const char *p,const char *a,const char *b){
-    if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0){
-        printf("[!] Ptrace Error\n");
-    }
-	execl(p, a, b, NULL); 
-}
 
 void show_registers(int pid){
 	struct user_regs_struct regs;
@@ -67,25 +46,8 @@ void show_registers(int pid){
 	printf("RBP:\t0x%08llx\t", regs.rbp);
 	printf("R11:\t0x%08llx\n", regs.r11);
 	printf("SS:\t0x%08llx\t", regs.ss);
+	printf("RSP:\t0x%08llx\t", regs.rsp);
 	printf("CS:\t0x%08llx\n", regs.cs);
-	// printf("The child made a system call %lldn", regs.orig_rax);
-}
-
-struct PyReg give_registers(int pid){
-	struct user_regs_struct regs;
-	struct PyReg preg;
-	ptrace(PTRACE_GETREGS, pid, 0, &regs);
-	preg.rip = (const char*)&regs.rip;
-	return preg;
-}
-
-
-int request_breakpoint(int nbp, char *breakpoints[]){
-	char address[1028];
-	printf("Enter Address for breakpoint:\n");
-	scanf("%s", address);
-	breakpoints[nbp] = address; 
-	return nbp + 1;
 }
 
 bool check_breakpoint(int pid, int n, char *point, char *breakpoints[]){
@@ -98,108 +60,134 @@ bool check_breakpoint(int pid, int n, char *point, char *breakpoints[]){
 	return isBreakpoint;
 }
 
-int start_debugee(const char* program){
-	printf("[-] Launching %s\n", program);
-	if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0){
-        printf("[!] Ptrace Error\n");
-    }
-    char * const NUL = " &";
-	return execv(program, &NUL);
+void set_registers(int pid, struct user_regs_struct new_regs){
+	ptrace(PTRACE_SETREGS, pid, 0, &new_regs);
 }
 
+unsigned long get_rax(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rax;
+}
 
-int debugger(int nargin, const char * program, const char *args[]){
-	// Setup Debugger Variables
-	unsigned steps = 0;
-	int wait_status;
+unsigned long get_rip(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rip;	
+}
 
-	// create a progress to run the pogram for debugging
-	int pid = fork();
+unsigned long get_rcx(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rcx;
+}
 
-	// check which process we are inside of
-	if (pid == 0){
-		// exec program
-		switch (nargin){
-			case 1:
-				fprintf(stderr, "[!]Incorrect Usage\n");
-				break;
-			case 2:
-				e(program);
-				break;
-			case 3:
-				e1(program, args[2]);
-				break;
-			case 4:
-				e2(program, args[2], args[3]);
-				break;
-			default:
-				fprintf(stderr, "[!]Incorrect Usage\n");
-				break;
-		}
+unsigned long get_rdx(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rdx;
+}
 
-	} else if (pid >= 1){ // In parent, 
-		wait(&wait_status);
-		
-		// probe process being inspected
-		bool stopped = false;
-		struct user_regs_struct temp_regs;
-		struct user_regs_struct regs;
-		ptrace(PTRACE_GETREGS, pid, 0, &regs);
-		char *breakpoints[100];
-		int breakpointsAdded = 0;
-		int hits = 0;
-	    while (WIFSTOPPED(wait_status)) {
-	    	// Let user choose what to do next
-	    	char options[256];  
-	        printf("[>]");
-	    	scanf("%s", options);
-	    	// Check if user wants to continue
-	        if (strcmp(options, "cont")==0 || strcmp(options, "c")==0){	
-				if (ptrace(PTRACE_CONT, pid, NULL, NULL) < 0) {
-		            perror("ptrace");
-		            return -1;
-		        }
-		        /* Wait for child to stop on its next instruction */
-	        	wait(&wait_status);
-	        	if (stopped){
-					ptrace(PTRACE_SETREGS, pid, 0, &regs);
-				}
-			}
-			// check if user wants to add a breakpoint
-			if (strcmp(options, "break") == 0){
-				ptrace(PTRACE_GETREGS, pid, 0, &temp_regs);
-				temp_regs.rsp = temp_regs.rsp & 0xcc000000;
-				ptrace(PTRACE_SETREGS, pid, 0, &temp_regs);
-			}
-			// check if user wants to single step
-			if (strcmp(options, "step") == 0){
-				if (ptrace(PTRACE_SINGLESTEP, pid, 0, 0) < 0) {
-		            perror("ptrace");
-		            return -1;
-		        }
-		        /* Wait for child to stop on its next instruction */
-	        	wait(&wait_status);	
-			}
-			// check if user wants to view registers
-			if (strcmp(options, "show")==0){
-				if (stopped)
-					ptrace(PTRACE_SETREGS, pid, 0, &regs);
-				show_registers(pid);
-			}
-			// check if user wants to quit the program
-			if (strcmp(options, "quit")==0 || strcmp(options, "q")==0){
-				ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);
-				break;
-			}
-			steps++;	        
-		}
+unsigned long get_rbx(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rbx;
+}
+
+unsigned long get_rsi(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rsi;
+}
+
+unsigned long get_rbp(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rbp;
+}
+
+unsigned long get_rdi(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rdi;
+}
+
+unsigned long get_rsp(int pid){
+	// Use Ptrace to get state of registers for given PID
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	return tmpregs.rsp;
+}
+
+bool continue_pid(int pid){
+	bool completed = true;
+	if (ptrace(PTRACE_CONT, pid, NULL, NULL) < 0){
+		perror("ptrace");
+		completed = false;
 	}
-
-	printf("[*] Completed. [%d instructions debugged]\n", steps);
-	return 0;
+	return completed;
 }
 
-int main(int argc, char const *argv[]){
-	debugger(argc, argv[1], argv);
-	return 0;
+void kill_pid(int pid){
+	ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);
 }
+
+bool step(int pid){
+	bool stepped = true;
+	if (ptrace(PTRACE_SINGLESTEP, pid, 0, 0) < 0){
+		perror("ptrace");
+		stepped = false;
+	}
+	return stepped;
+}
+
+void parent_wait(int wait_status){
+	wait(&wait_status);
+	return;
+}
+
+
+void pause_pid(int pid){
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	tmpregs.rsp = tmpregs.rsp & 0xcc0000000000;
+	ptrace(PTRACE_SETREGS, pid, 0, &tmpregs);
+   
+}
+
+void set_eperm_syscall(int pid){
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	tmpregs.rax = -EPERM; // Operation not permitted
+    ptrace(PTRACE_SETREGS, pid, 0, &tmpregs);
+}
+
+void exec_next_syscall(int pid){
+	/* Run system call and stop on exit */
+    ptrace(PTRACE_SYSCALL, pid, 0, 0);
+    waitpid(pid, 0, 0);
+}
+
+void set_invalid_syscall(int pid){
+	struct user_regs_struct tmpregs;
+	ptrace(PTRACE_GETREGS, pid, 0, &tmpregs);
+	tmpregs.orig_rax = -1; // set to invalid syscall
+ 	ptrace(PTRACE_SETREGS, pid, 0, &tmpregs);
+}
+
+void traceme(){
+	if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0){
+        perror("[!] Ptrace Error\n");
+    }
+}
+
+
+/* Compile with: gcc -shared -fPIC -o dlib.so buggerlib.c */

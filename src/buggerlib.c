@@ -190,7 +190,27 @@ void traceme(){
     }
 }
 
+void show_instr_ptr(int pid){
+	struct user_regs_struct regs;
+	/* Obtain and show child's instruction pointer */
+	ptrace(PTRACE_GETREGS, pid, 0, &regs);
+	printf("Child started. RIP = 0x%08x\n", regs.rip);
+}
+
+void get_addr_data(int pid, unsigned long *addr){
+	unsigned data = ptrace(PTRACE_PEEKTEXT, pid, (void*)addr, 0);
+	printf("0x%08lx: 0x%08lx\n", addr, data);
+
+}
 
 
+void set_breakpoint(int pid, unsigned long *addr){
+	/* Write the trap instruction 'int 3' into the address */
+	unsigned data_with_trap = (data & 0xFFFFFF00) | 0xCC;
+	ptrace(PTRACE_POKETEXT, pid, (void*)addr, (void*)data_with_trap);
+	/* See what's there again... */
+	unsigned readback_data = ptrace(PTRACE_PEEKTEXT, pid, (void*)addr, 0);
+	printf("x%08x: 0x%08x\n", addr, readback_data);
+}
 
 /* Compile with: gcc -shared -fPIC -o dlib.so buggerlib.c */

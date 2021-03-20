@@ -5,14 +5,9 @@ import subprocess
 import time
 import sys 
 import os 
-# Load The C Library for Stepping through ELF binaries
-if not os.path.isfile('dlib.so'):
-	os.system("gcc -shared -fPIC -o dlib.so ../src/buggerlib.c")
+
 lib = cdll.LoadLibrary("./dlib.so")
 
-# Create GUI 
-root = Tk()
-root.wm_title("~ Firecracker ~") 
 
 class Register:
 
@@ -34,19 +29,20 @@ class Register:
 def debugger(program):
 	# Doesnt work with GUI though.. Tkinter won't come up here during main Thread.
 	newpid = os.fork()
-	lib.traceme()
-	running = True
-	while running :
+	while True:
 		if newpid == 0:
 			# Execute the debugger program
 			dbg_pid = launch_program(program)
 			lib.show_registers(dbg_pid)
-			# lib.set_invalid_syscall(dbg_pid)
-			# lib.exec_next_syscall(dbg_pid)
-			lib.pause_pid(dbg_pid)
+			lib.get_rax.argtypes = [c_int]
+			lib.get_rax.restypes = c_ulong
+			lib.get_rip.argtypes = [c_int]
+			lib.get_rip.restypes = c_ulong
 			Register(root, 'RIP', '0x%08x' % c_ulong(lib.get_rip(dbg_pid) & 0xFFFFFFFF).value, [1,0])
 			Register(root, 'RAX', '0x%08x' % c_ulong(lib.get_rax(dbg_pid) & 0xFFFFFFFF).value, [2,0])
-			running = False
+			# Try Setting Breakpoint
+
+			time.sleep(0.3)
 		else:
 			pids = (os.getpid, newpid)
 			time.sleep(.3)
@@ -64,12 +60,21 @@ def quit():
 
 
 def main():
+	# Load The C Library for Stepping through ELF binaries
+	if not os.path.isfile('firecracker.so'):
+		os.system('gcc -shared -fPIC -o firecracker.so bugger.c')
+	
+	
 	# Load in program to debug
 	if len(sys.argv) >=2:
 		target = sys.argv[1]
-
-	start = time.time()
-	
+	else:
+		print('Usage: %s [option] program' % sys.argv[0])
+		exit()
+		
+	# Create GUI 
+	root = Tk()
+	root.wm_title("~ Firecracker ~") 
 	root.config(background = "#b1b1b1b1b1b1")
 	# Add Quit Button
 	q = Button(root, text="Quit", command=quit)
@@ -87,10 +92,6 @@ def main():
 	Register(root, 'R11', '0x00000000', [4, 1])
 	Register(root, 'RSP', '0x00000000', [5, 1])
 	Register(root,  'SS', ' 0x00000000', [6, 1])
-
-	debugger(target)		
-
-
 	# run it
 	root.mainloop()
 
